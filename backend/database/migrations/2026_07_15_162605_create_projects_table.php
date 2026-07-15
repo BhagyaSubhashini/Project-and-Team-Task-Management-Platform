@@ -26,18 +26,18 @@ return new class extends Migration
 
             // Project Status
             $table->enum('status', [
-                'Pending',
-                'In Progress',
-                'Completed',
-                'On Hold'
-            ])->default('Pending');
+                'pending',
+                'active',
+                'completed',
+                'cancelled'
+            ])->default('pending');
 
             // Project Priority
             $table->enum('priority', [
-                'Low',
-                'Medium',
-                'High'
-            ])->default('Medium');
+                'low',
+                'medium',
+                'high'
+            ])->default('medium');
 
             // Dates
             $table->date('start_date')->nullable();
