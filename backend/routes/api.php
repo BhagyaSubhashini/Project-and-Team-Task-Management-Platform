@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProjectController;
 
 
 /*
@@ -28,5 +29,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Logout current user
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Project CRUD
+    Route::apiResource('projects', ProjectController::class);
 
 });
