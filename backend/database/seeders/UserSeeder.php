@@ -17,18 +17,15 @@ class UserSeeder extends Seeder
         $adminRole = Role::where('name','Administrator')->first();
 
 
-        User::create([
-
-            'name' => 'System Administrator',
-
-            'email' => 'admin@example.com',
-
-            'phone' => '0770000000',
-
-            'password' => Hash::make('password'),
-
-            'role_id' => $adminRole->id
-
-        ]);
+        User::updateOrCreate([
+                'email' => 'admin@example.com'
+            ],
+            [
+                'role_id' => $adminRole->id,
+                'name' => 'System Administrator',
+                'phone' => '0770000000',
+                'profile_image' => null,
+                'password' => Hash::make('password'),
+            ]);
     }
 }
