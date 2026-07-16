@@ -3,6 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\CommentController;
 
 
 /*
@@ -32,5 +35,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Project CRUD
     Route::apiResource('projects', ProjectController::class);
+
+    // Task CRUD
+    Route::apiResource('tasks', TaskController::class);
+
+    // User CRUD
+    Route::apiResource('users', UserController::class);
+
+    // Comment CRUD
+    Route::apiResource('comments', CommentController::class);
 
 });
