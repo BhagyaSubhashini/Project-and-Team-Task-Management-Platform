@@ -9,21 +9,127 @@ use Illuminate\Http\Request;
 class ProjectController extends Controller
 {
 
-    public function index()
+
+    /*
+    |--------------------------------------------------------------------------
+    | Display Projects (RBAC)
+    |--------------------------------------------------------------------------
+    */
+
+    public function index(Request $request)
     {
-        return response()->json(
-            Project::with('manager')->get()
-        );
+
+        $user = $request->user();
+
+        $role = $user->role->name;
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Administrator
+        |--------------------------------------------------------------------------
+        */
+
+        if($role === "Administrator")
+        {
+
+            return response()->json(
+
+                Project::with('manager')
+                ->with('members.role')
+                ->latest()
+                ->get()
+
+            );
+
+        }
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Project Manager
+        |--------------------------------------------------------------------------
+        */
+
+        if($role === "Project Manager")
+        {
+
+            return response()->json(
+
+                Project::with('manager')
+                ->with('members.role')
+                ->where(
+                    'manager_id',
+                    $user->id
+                )
+                ->latest()
+                ->get()
+
+            );
+
+        }
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Team Member
+        |--------------------------------------------------------------------------
+        */
+
+        if($role === "Team Member")
+        {
+
+            return response()->json(
+
+                $user->projects()
+                ->with('manager')
+                ->with('members.role')
+                ->latest()
+                ->get()
+
+            );
+
+        }
+
+
+
+
+
+        return response()->json([]);
+
     }
 
 
 
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create Project
+    |--------------------------------------------------------------------------
+    */
+
     public function store(Request $request)
     {
 
+
         $validated = $request->validate([
 
-            'name'=>'required|string',
+
+            'name'=>'required|string|max:255',
 
             'description'=>'nullable|string',
 
@@ -35,17 +141,84 @@ class ProjectController extends Controller
 
             'end_date'=>'nullable|date',
 
+            'manager_id'=>'nullable|exists:users,id'
+
+
         ]);
+
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Assign Manager
+        |--------------------------------------------------------------------------
+        |
+        | Administrator can select manager.
+        | Project Manager becomes manager automatically.
+        |
+        */
+
+
+        if(
+            $request->user()->role->name === "Administrator"
+            &&
+            isset($validated['manager_id'])
+        )
+        {
+
+            $managerId =
+            $validated['manager_id'];
+
+        }
+        else
+        {
+
+            $managerId =
+            $request->user()->id;
+
+        }
+
+
+
+
 
 
 
         $project = Project::create([
 
-            ...$validated,
 
-            'manager_id'=>$request->user()->id
+            'name'=>$validated['name'],
+
+
+            'description'=>$validated['description'] ?? null,
+
+
+            'status'=>$validated['status'],
+
+
+            'priority'=>$validated['priority'],
+
+
+            'start_date'=>$validated['start_date'] ?? null,
+
+
+            'end_date'=>$validated['end_date'] ?? null,
+
+
+            'manager_id'=>$managerId
+
 
         ]);
+
+
+
+
+
 
 
 
@@ -53,60 +226,225 @@ class ProjectController extends Controller
 
             'message'=>'Project created successfully',
 
-            'project'=>$project
+            'project'=>$project->load('manager')
 
         ],201);
 
+
+
     }
 
 
 
-    public function show(Project $project)
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Show Project
+    |--------------------------------------------------------------------------
+    */
+
+    public function show(
+        Request $request,
+        Project $project
+    )
     {
+
+
+        $user = $request->user();
+
+        $role = $user->role->name;
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Project Manager ownership check
+        |--------------------------------------------------------------------------
+        */
+
+
+        if(
+            $role === "Project Manager"
+            &&
+            $project->manager_id !== $user->id
+        ){
+
+            return response()->json([
+
+                "message"=>"Unauthorized."
+
+            ],403);
+
+        }
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Team Member access check
+        |--------------------------------------------------------------------------
+        */
+
+
+        if(
+            $role === "Team Member"
+            &&
+            !$project->members()
+            ->where(
+                'users.id',
+                $user->id
+            )
+            ->exists()
+
+        ){
+
+            return response()->json([
+
+                "message"=>"Unauthorized."
+
+            ],403);
+
+        }
+
+
+
+
+
+
+
 
         return response()->json(
 
+
             $project->load([
+
                 'manager',
-                'tasks'
+
+                'tasks',
+
+                'members.role'
+
             ])
 
         );
+
 
     }
 
 
 
-    public function update(Request $request, Project $project)
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Project
+    |--------------------------------------------------------------------------
+    */
+
+    public function update(
+        Request $request,
+        Project $project
+    )
     {
 
 
+        $user = $request->user();
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Project Manager can update only own projects
+        |--------------------------------------------------------------------------
+        */
+
+
+        if(
+            $user->role->name === "Project Manager"
+            &&
+            $project->manager_id !== $user->id
+        ){
+
+            return response()->json([
+
+                "message"=>"You cannot update this project."
+
+            ],403);
+
+        }
+
+
+
+
+
+
+
+        $validated = $request->validate([
+
+
+            'name'=>'sometimes|string',
+
+
+            'description'=>'nullable|string',
+
+
+            'status'=>'sometimes|string',
+
+
+            'priority'=>'sometimes|string',
+
+
+            'start_date'=>'nullable|date',
+
+
+            'end_date'=>'nullable|date',
+
+
+            'manager_id'=>'nullable|exists:users,id'
+
+
+        ]);
+
+
+
+
+
+
+
+
         $project->update(
-
-            $request->validate([
-
-                'name'=>'sometimes|string',
-
-                'description'=>'nullable|string',
-
-                'status'=>'sometimes|string',
-
-                'priority'=>'sometimes|string',
-
-                'start_date'=>'nullable|date',
-
-                'end_date'=>'nullable|date',
-
-            ])
-
+            $validated
         );
+
+
+
+
+
+
 
 
         return response()->json([
 
             'message'=>'Project updated',
 
-            'project'=>$project
+            'project'=>$project->load('manager')
 
         ]);
 
@@ -114,10 +452,66 @@ class ProjectController extends Controller
 
 
 
-    public function destroy(Project $project)
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Project
+    |--------------------------------------------------------------------------
+    */
+
+    public function destroy(
+        Request $request,
+        Project $project
+    )
     {
 
+
+        $user = $request->user();
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Project Manager ownership check
+        |--------------------------------------------------------------------------
+        */
+
+
+        if(
+            $user->role->name === "Project Manager"
+            &&
+            $project->manager_id !== $user->id
+        ){
+
+            return response()->json([
+
+                "message"=>"You cannot delete this project."
+
+            ],403);
+
+        }
+
+
+
+
+
+
+
         $project->delete();
+
+
+
+
+
 
 
         return response()->json([
@@ -127,5 +521,7 @@ class ProjectController extends Controller
         ]);
 
     }
+
+
 
 }
