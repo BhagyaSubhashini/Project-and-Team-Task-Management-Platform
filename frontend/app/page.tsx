@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/services/auth";
-import { FaProjectDiagram } from "react-icons/fa";
 
 
 export default function LoginPage(){
@@ -95,18 +94,6 @@ via-blue-900
 to-indigo-900
 ">
 
-
-<div className="
-absolute
-top-10
-left-10
-text-white
-opacity-20
-">
-
-<FaProjectDiagram size={120}/>
-
-</div>
 
 
 
